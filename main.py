@@ -2,37 +2,30 @@ import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
 import os
+from utils import *
+from PIL import Image
 
-def display_2_images_side_by_side(img1, img2, target_height=400):
-  aspect_ratio1 = img1.shape[1] / img1.shape[0]
-  aspect_ratio2 = img2.shape[1] / img2.shape[0]
+YELLOW = [0,255,255]
+video_capture = cv.VideoCapture(0)
+yellow_lower_limit, yellow_upper_limit = get_color_limits(YELLOW, tol=15)
 
-  img1_resized = cv.resize(img1, (int(target_height * aspect_ratio1), target_height))
-  img2_resized = cv.resize(img2, (int(target_height * aspect_ratio2), target_height))
+while True:
+  ret, frame = video_capture.read()
 
-  cv.namedWindow('img1', cv.WINDOW_AUTOSIZE)
-  cv.imshow('img1',img1_resized )
-  cv.moveWindow('img1', 100, 100)
+  hsv_img = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
+  mask = cv.inRange(hsv_img, yellow_lower_limit, yellow_upper_limit)
+  mask_ = Image.fromarray(mask)
 
-  offset_x = 100 + img1_resized.shape[1] + 20
-  cv.namedWindow('img2', cv.WINDOW_AUTOSIZE)
-  cv.imshow('img2', img2_resized)
-  cv.moveWindow('img2',offset_x, 100)
+  bbox = mask_.getbbox()
 
-  cv.waitKey(0)
-  cv.destroyAllWindows()
+  if bbox is not None:
+    x1,y1,x2,y2 = bbox
+    frame = cv.rectangle(frame, (x1,y1),(x2,y2),[0,255,0],2)
 
-img1 = cv.imread(os.path.join('./assets','birds.jpeg'))
-img1 = cv.cvtColor(img1, cv.COLOR_BGR2GRAY)
-ret, img2 = cv.threshold(img1, 127, 255, cv.THRESH_BINARY_INV)
-contours, hierarchy = cv.findContours(img2, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+  cv.imshow('frame', frame)
 
-color = (0,255,0)
-for cnt in contours:
-  if cv.contourArea(cnt) > 200:
-    # cv.drawContours(img1, cnt, -1, color, 1)
+  if cv.waitKey(1) & 0xFF == ord('q'):
+    break
 
-    x1,y1,w,h=cv.boundingRect(cnt)
-    cv.rectangle(img1, (x1,y1),(x1+w,y1+h),color,3)
-
-display_2_images_side_by_side(img1, img2)
+video_capture.release()
+cv.destroyAllWindows()
