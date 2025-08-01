@@ -3,11 +3,9 @@ import cv2 as cv
 import matplotlib.pyplot as plt
 import os
 
-img_path = os.path.join('.','bear.jpg')
+img_path = os.path.join('./assets/','bear.jpg')
 img = cv.imread(img_path)
 img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-print(img.shape)
-
 def display_2_images_side_by_side(img1, img2, target_height=400):
   aspect_ratio1 = img1.shape[1] / img1.shape[0]
   aspect_ratio2 = img2.shape[1] / img2.shape[0]
@@ -27,9 +25,10 @@ def display_2_images_side_by_side(img1, img2, target_height=400):
   cv.waitKey(0)
   cv.destroyAllWindows()
 
-target_display_height = 800
-
-for alpha in range(10, 250, 10):
-  ret, threshold_img = cv.threshold(img, alpha, 255, cv.THRESH_BINARY)
-  print(alpha)
+OPTIMUM_THRESHOLD = 105
+for k in range(1, 21, 2):
+  ret, threshold_img = cv.threshold(img, OPTIMUM_THRESHOLD, 255, cv.THRESH_BINARY)
+  blurred_bear = cv.blur(threshold_img, (k,k))
+  ret, threshold_img = cv.threshold(blurred_bear, OPTIMUM_THRESHOLD, 255, cv.THRESH_BINARY)
+  print(k)
   display_2_images_side_by_side(img, threshold_img)
