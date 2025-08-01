@@ -22,13 +22,17 @@ def display_2_images_side_by_side(img1, img2, target_height=400):
   cv.waitKey(0)
   cv.destroyAllWindows()
 
+img1 = cv.imread(os.path.join('./assets','birds.jpeg'))
+img1 = cv.cvtColor(img1, cv.COLOR_BGR2GRAY)
+ret, img2 = cv.threshold(img1, 127, 255, cv.THRESH_BINARY_INV)
+contours, hierarchy = cv.findContours(img2, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
-img_path = os.path.join('./assets/','handwriting.jpg')
-img = cv.imread(img_path)
-img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+color = (0,255,0)
+for cnt in contours:
+  if cv.contourArea(cnt) > 200:
+    # cv.drawContours(img1, cnt, -1, color, 1)
 
-threshold = cv.adaptiveThreshold(img, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 21, 31)
+    x1,y1,w,h=cv.boundingRect(cnt)
+    cv.rectangle(img1, (x1,y1),(x1+w,y1+h),color,3)
 
-# ret, threshold = cv.threshold(img, 80, 255, cv.THRESH_BINARY)
-
-display_2_images_side_by_side(img, threshold)
+display_2_images_side_by_side(img1, img2)
