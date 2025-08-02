@@ -18,7 +18,7 @@ def process_img(img, face_detection):
   H, W, _ = img.shape
 
   if out.detections is not None:
-    for detection in out.detections:
+    for detection in out.detections: # if more the one face
       location_data = detection.location_data
       bbox = location_data.relative_bounding_box
 
@@ -29,8 +29,23 @@ def process_img(img, face_detection):
       w = int(w * W)
       h = int(h * H)
 
+      center = (x1 + w // 2, y1)
+      r = w // 2
+      # cv.circle(img, center, r, 255, -1)
       # cv.rectangle(img, (x1,y1),(x1+w,y1+h),[0,255,255],5)
-      img[y1:y1+h,x1:x1+w,:] = cv.blur(img[y1:y1+h,x1:x1+w,:], (27,27))
+
+      mask = np.zeros(img.shape[:2], dtype=np.uint8)
+
+      cv.circle(mask, center, r, 255, -1) # This creates the mask you want w/ specific colours
+      cv.rectangle(mask, (x1,y1), (x1+w,y1+h), 255, -1)
+
+      blurred_whole_img = cv.blur(img, (51,51))
+      if len(img.shape) == 3:
+        mask_3ch = cv.merge([mask]*3)
+      else:
+        mask_3ch = mask
+      img = np.where(mask_3ch == 255, blurred_whole_img, img)
+    
   img = cv.cvtColor(img, cv.COLOR_RGB2BGR)
   return img
 
