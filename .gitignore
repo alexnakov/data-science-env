@@ -1,3 +1,7 @@
 __pycache__
 .vscode
 assets
+data_vids
+data
+clf-data
+model.p

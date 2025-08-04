@@ -1,71 +1,47 @@
 import numpy as np
-import cv2 as cv
-import matplotlib.pyplot as plt
 import os
-from utils import *
-import mediapipe as mp
-import argparse
+from skimage.io import imread
+from skimage.transform import resize
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+import pickle
 
-args = argparse.ArgumentParser()
-args.add_argument("--mode", default='video')
-args.add_argument("--filePath", default='./assets/person.jpg')
-parsed_args = args.parse_args()
+clf_data = os.path.join('clf-data','')
+categories = ['empty', 'not_empty']
 
+data = []
+labels = []
 
-def process_img(img, face_detection):
-  img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
-  out = face_detection.process(img)
-  H, W, _ = img.shape
+for category_idx, category in enumerate(categories):
+  for file in os.listdir(os.path.join(clf_data,category)):
+    img_path = os.path.join(clf_data, category, file)
+    img = imread(img_path)
+    img = resize(img, (15,15))
+    data.append(img.flatten())
+    labels.append(category_idx)
 
-  if out.detections is not None:
-    for detection in out.detections: # if more the one face
-      location_data = detection.location_data
-      bbox = location_data.relative_bounding_box
+data = np.asarray(data)
+labels = np.asarray(labels)
 
-      x1, y1, w, h = bbox.xmin, bbox.ymin, bbox.width, bbox.height
+x_train, x_test, y_train, y_test = train_test_split(data, 
+                                                    labels, 
+                                                    test_size=0.8, 
+                                                    shuffle=True, 
+                                                    stratify=labels)
 
-      x1 = int(x1 * W)
-      y1 = int(y1 * H)
-      w = int(w * W)
-      h = int(h * H)
+classifier = SVC()
 
-      center = (x1 + w // 2, y1)
-      r = w // 2
-      # cv.circle(img, center, r, 255, -1)
-      # cv.rectangle(img, (x1,y1),(x1+w,y1+h),[0,255,255],5)
+params = [{'gamma':[0.01,0.001,0.0001],'C':[1,10,100,1000]}]
+grid_search = GridSearchCV(classifier, params)
+grid_search.fit(x_train, y_train)
 
-      mask = np.zeros(img.shape[:2], dtype=np.uint8)
+# test performance
 
-      cv.circle(mask, center, r, 255, -1) # This creates the mask you want w/ specific colours
-      cv.rectangle(mask, (x1,y1), (x1+w,y1+h), 255, -1)
+best_estimator = grid_search.best_estimator_
+y_predict = best_estimator.predict(x_test)
+score = accuracy_score(y_predict, y_test)
 
-      blurred_whole_img = cv.blur(img, (51,51))
-      if len(img.shape) == 3:
-        mask_3ch = cv.merge([mask]*3)
-      else:
-        mask_3ch = mask
-      img = np.where(mask_3ch == 255, blurred_whole_img, img)
-    
-  img = cv.cvtColor(img, cv.COLOR_RGB2BGR)
-  return img
-
-img_path = os.path.join('./assets/','person.jpg')
-img = cv.imread(img_path)
-
-# detect faces
-mp_face_detection = mp.solutions.face_detection
-
-with mp_face_detection.FaceDetection(model_selection=0, min_detection_confidence=0.5) as face_detection:
-  if parsed_args.mode in ['image']:
-    img = cv.imread(parsed_args.filePath)
-    output_img = process_img(img, face_detection)
-    cv.imwrite(os.path.join('./assets/','outputPerson.jpg'), output_img)
-  elif parsed_args.mode in ['video']:
-    video_capture = cv.VideoCapture(0)
-    while True:
-      ret, frame = video_capture.read()
-      processed_frame = process_img(frame, face_detection)
-      cv.imshow('img', processed_frame)
-      if cv.waitKey(40) & 0xFF == ord('q'):
-        break
-
+print('{}% of samples were correctly classified'.format(round(score*100, 2)))
+pickle.dump(best_estimator, open('./model.p','wb'))
